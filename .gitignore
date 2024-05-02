@@ -1,0 +1,5 @@
+.git
+dist-newstyle
+dist-newstyle/**
+CHANGELOG.md
+LICENSE
