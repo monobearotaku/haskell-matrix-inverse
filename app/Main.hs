@@ -2,6 +2,8 @@ module Main where
 
 import System.Random (randomRIO)
 import Text.Printf (printf)
+import Control.Parallel.Strategies
+import Control.Exception (evaluate)
 
 type Matrix = [[Double]]
 
@@ -23,11 +25,11 @@ printMatrix = mapM_ printRow
     printRow row = putStrLn $ concatMap (printf "%.2f ") row
 
 inverseMatrix :: Matrix -> Matrix
-inverseMatrix a = 
+inverseMatrix a =
     let n = length a
         identity = identityMatrix n
-        (leftInv, rightInv) = foldl processRow (a, identity) [0..n-1]
-    in rightInv
+        (leftInv, _) = foldl processRow (a, identity) [0..n-1]
+    in leftInv
 
 processRow :: (Matrix, Matrix) -> Int -> (Matrix, Matrix)
 processRow (left, right) idx =
@@ -40,22 +42,25 @@ processRow (left, right) idx =
         eliminate k (l, r) = if k == idx then (l, r) else
             let factor = l !! k !! idx
             in (subtractRow factor idx k l, subtractRow factor idx k r)
-    in foldr eliminate (leftScaled, rightScaled) [0..n-1]
 
+    in foldr eliminate (leftScaled, rightScaled) [0..n-1] 
 
 scaleRow :: Double -> Int -> Matrix -> Matrix
-scaleRow factor idx mat = take idx mat ++ [map (* factor) (mat !! idx)] ++ drop (idx + 1) mat
+scaleRow factor idx mat = take idx mat ++ [parMap r0 (* factor) (mat !! idx)] ++ drop (idx + 1) mat
 
 subtractRow :: Double -> Int -> Int -> Matrix -> Matrix
 subtractRow factor srcIdx destIdx mat =
-    let srcRow = map (* factor) (mat !! srcIdx)
+    let srcRow = parMap r0 (* factor) (mat !! srcIdx)
     in take destIdx mat ++ [zipWith (-) (mat !! destIdx) srcRow] ++ drop (destIdx + 1) mat
 
 main :: IO ()
 main = do
-    let n = 5
+    let n = 500
     a <- radnomMatrix n
-    putStrLn "Original Matrix:"
-    printMatrix a
-    putStrLn "Inverse Matrix:"
-    printMatrix (inverseMatrix a)
+    -- putStrLn "Original Matrix:"
+    -- printMatrix a
+    -- putStrLn "Inverse Matrix:"
+
+    -- printMatrix (inverseMatrix a)
+    _ <- evaluate (inverseMatrix a)
+    return ()
